@@ -17,7 +17,8 @@ export default async function Admin() {
 
   const db = createAdminClient();
   const today = todayZagreb();
-  const games = GAMES.filter((g) => g.available);
+  // Boćanje nema ručno odobravan sadržaj (staza se generira iz datuma)
+  const games = GAMES.filter((g) => g.available && g.slug !== "bocanje");
 
   const sections = await Promise.all(
     games.map(async (g) => {

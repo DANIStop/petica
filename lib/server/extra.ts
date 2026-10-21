@@ -1,4 +1,4 @@
-import type { Rng } from "@/lib/games/rijecko/puzzle";
+import type { Rng } from "@/lib/rng";
 
 /** Dodatna runda: odobreni sadržaj koji korisnik nije vidio i koji nije (više) zakazan kao dnevni. */
 export function chooseExtra(approved: string[], seen: Set<string>, scheduled: Set<string>, rng: Rng = Math.random): string | null {

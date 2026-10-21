@@ -21,6 +21,12 @@ export async function findPlay(db: SupabaseClient, userId: string, game: string,
   return data as Play | null;
 }
 
+/** Provjera premiuma na serveru (dodatne runde). */
+export async function userIsPremium(db: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await db.from("profiles").select("premium_until").eq("id", userId).single();
+  return isPremium(data?.premium_until);
+}
+
 export type ExtraResult = { status: "paywall" | "exhausted" } | { status: "ok"; play: Play };
 
 /**
@@ -34,8 +40,7 @@ export async function startExtraPlay(
   date: string,
   initState: (payload: any) => unknown,
 ): Promise<ExtraResult> {
-  const { data: profile } = await db.from("profiles").select("premium_until").eq("id", userId).single();
-  if (!isPremium(profile?.premium_until)) return { status: "paywall" };
+  if (!(await userIsPremium(db, userId))) return { status: "paywall" };
 
   const { data: open } = await db
     .from("plays").select("*").eq("user_id", userId).eq("game", game).eq("kind", "extra").is("finished_at", null).limit(1).maybeSingle();

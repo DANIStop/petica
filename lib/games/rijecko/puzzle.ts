@@ -1,4 +1,8 @@
+import { mulberry32, type Rng } from "@/lib/rng";
 import { tokenize } from "./tiles";
+
+export { mulberry32 };
+export type { Rng };
 
 export const SIZE = 5;
 export const MAX_SWAPS = 15;
@@ -6,7 +10,6 @@ export const SOLVABLE_IN = 10;
 
 export type Grid = (string | null)[];
 export type Color = "green" | "yellow" | "gray" | null;
-export type Rng = () => number;
 
 /** Rupe su ćelije s neparnim retkom i neparnim stupcem. */
 export const isHole = (i: number) => Math.floor(i / SIZE) % 2 === 1 && (i % SIZE) % 2 === 1;
@@ -17,17 +20,6 @@ export const LINES: number[][] = [
   ...[0, 2, 4].map((r) => [0, 1, 2, 3, 4].map((c) => r * SIZE + c)),
   ...[0, 2, 4].map((c) => [0, 1, 2, 3, 4].map((r) => r * SIZE + c)),
 ];
-
-export function mulberry32(seed: number): Rng {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 export function isSolved(grid: Grid, solution: Grid): boolean {
   return CELLS.every((i) => grid[i] === solution[i]);
