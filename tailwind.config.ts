@@ -5,9 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#0f1115",
-        card: "#181b22",
-        muted: "#8b93a3",
+        bg: "var(--bg)",
+        card: "var(--card)",
+        muted: "var(--muted)",
+        ink: "var(--ink)",
+      },
+      fontFamily: {
+        display: ["var(--font-display)"],
+        sans: ["var(--font-body)"],
       },
     },
   },

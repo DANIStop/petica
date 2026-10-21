@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { GAMES } from "@/lib/games/registry";
-import { todayZagreb } from "@/lib/date";
+import { formatEditionDate, roundNumber, todayZagreb } from "@/lib/date";
+import Countdown from "@/components/Countdown";
+import GameGlyph from "@/components/GameGlyph";
 import SaveStreakPrompt from "@/components/SaveStreakPrompt";
 import { activeStreak, EMPTY_STREAK, type Streak } from "@/lib/streak";
 
@@ -27,46 +29,70 @@ async function loadStatus(today: string) {
 }
 
 export default async function Home() {
-  const today = todayZagreb();
+  const now = new Date();
+  const today = todayZagreb(now);
   const { played, streaks, offerSave } = await loadStatus(today);
+  const done = GAMES.filter((g) => played.has(g.slug)).length;
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">Petica.</h1>
-        <p className="text-muted">Pet igara dnevno. Svaki dan nova runda.</p>
+      <header className="rise">
+        <p className="kicker">{formatEditionDate(now)} · Izdanje br. {roundNumber(today)}</p>
+        <hr className="rule-double mt-3" />
+        <h1 className="wordmark mt-5">
+          Petica<span style={{ color: "#ffb042" }}>.</span>
+        </h1>
+        <p className="mt-3 max-w-[22rem] text-[1.02rem] leading-snug text-muted">
+          Pet igara, jedna runda svake. Svaki dan novo izdanje.
+        </p>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="flex gap-1.5" aria-hidden>
+            {GAMES.map((g) => (
+              <span key={g.slug} className="pip" data-on={played.has(g.slug)} style={{ ["--accent" as string]: g.accent }} />
+            ))}
+          </div>
+          <p className="kicker">{done === GAMES.length ? "Sve odigrano — do sutra!" : `${done} od ${GAMES.length} odigrano`}</p>
+        </div>
       </header>
-      <ul className="space-y-3">
-        {GAMES.map((g) => {
+
+      <ul className="mt-7 space-y-3">
+        {GAMES.map((g, i) => {
           const streak = activeStreak(streaks.get(g.slug) ?? EMPTY_STREAK, today);
-          const done = played.has(g.slug);
+          const isDone = played.has(g.slug);
           return (
-            <li key={g.slug}>
+            <li key={g.slug} className="rise" style={{ ["--i" as string]: i + 1 }}>
               <a
-                href={g.available ? `/${g.slug}` : undefined}
-                aria-disabled={!g.available}
-                className="flex items-center justify-between rounded-xl bg-card p-4 border-l-4"
-                style={{ borderColor: g.accent }}
+                href={`/${g.slug}`}
+                className="game-card"
+                data-done={isDone}
+                style={{ ["--accent" as string]: g.accent }}
               >
-                <span>
-                  <span className="block text-lg font-semibold">{g.name}</span>
-                  <span className="block text-sm text-muted">{g.tagline}</span>
+                <span className="glyph"><GameGlyph slug={g.slug} /></span>
+                <span className="min-w-0">
+                  <span className="kicker block" style={{ color: g.accent }}>
+                    {String(i + 1).padStart(2, "0")}{streak > 0 && <> · 🔥 {streak}</>}
+                  </span>
+                  <span className="block font-display text-[1.55rem] font-bold leading-tight">{g.name}</span>
+                  <span className="block text-[0.88rem] leading-snug text-muted">{g.tagline}</span>
                 </span>
-                <span className="text-sm text-right">
-                  {!g.available ? "Uskoro" : done ? "Odigrano ✓" : "Igraj"}
-                  {streak > 0 && <span className="block">🔥 {streak}</span>}
-                </span>
+                {isDone ? <span className="pill pill-done">✓ Odigrano</span> : <span className="pill pill-go">Igraj →</span>}
               </a>
             </li>
           );
         })}
       </ul>
+
       {offerSave && <SaveStreakPrompt />}
-      <nav className="mt-6 flex justify-center gap-4 text-muted">
-        <a href="/arhiva">Arhiva</a>
-        <a href="/statistika">Statistika</a>
-        <a href="/premium">Premium ⭐</a>
-      </nav>
+
+      <footer className="rise mt-9 text-center" style={{ ["--i" as string]: 7 }}>
+        <hr className="rule" />
+        <p className="kicker mt-4">Idući broj za <Countdown /></p>
+        <nav className="mt-4 flex flex-wrap justify-center gap-2">
+          <a className="nav-pill" href="/arhiva">Arhiva</a>
+          <a className="nav-pill" href="/statistika">Statistika</a>
+          <a className="nav-pill" href="/premium">Premium ⭐</a>
+        </nav>
+      </footer>
     </>
   );
 }
