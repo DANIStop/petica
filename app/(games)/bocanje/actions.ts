@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
 import { hashSeed } from "@/lib/rng";
 import { updateStreak } from "@/lib/server/streak";
-import { findPlay, userIsPremium, type Play } from "@/lib/server/plays";
+import { findPlay, startArchivePlay, userIsPremium, type Play } from "@/lib/server/plays";
 import {
   generateTrack, meterPower, plausibleElapsed, scoreThrow, THROWS, type Throw, type ThrowResult,
 } from "@/lib/games/bocanje/physics";
@@ -25,7 +25,7 @@ export type BocanjeView = {
   total: number;
 };
 
-export type StartResult = { status: "ok"; view: BocanjeView } | { status: "unauthenticated" | "paywall"; date: string };
+export type StartResult = { status: "ok"; view: BocanjeView } | { status: "unauthenticated" | "paywall" | "unavailable"; date: string };
 
 const initState = (seed: number): State => ({ seed, throws: [], startedAt: null, n: 0 });
 
@@ -41,17 +41,23 @@ function toView(play: Play, state: State): BocanjeView {
   };
 }
 
-export async function startBocanje(extra = false): Promise<StartResult> {
+export async function startBocanje(extra = false, archiveDate?: string): Promise<StartResult> {
   const date = todayZagreb();
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { status: "unauthenticated", date };
   const db = createAdminClient();
 
   let play: Play | null;
-  if (extra) {
+  if (archiveDate) {
+    // ista staza kao tog dana (seed = datum), bez sadržaja u bazi
+    const res = await startArchivePlay(db, auth.user.id, GAME, archiveDate, date, () => initState(hashSeed(archiveDate)), false);
+    if (res.status === "paywall") return { status: "paywall", date };
+    if (res.status !== "ok") return { status: "unavailable", date };
+    play = res.play;
+  } else if (extra) {
     if (!(await userIsPremium(db, auth.user.id))) return { status: "paywall", date };
     const { data: open } = await db
-      .from("plays").select("*").eq("user_id", auth.user.id).eq("game", GAME).eq("kind", "extra").is("finished_at", null).limit(1).maybeSingle();
+      .from("plays").select("*").eq("user_id", auth.user.id).eq("game", GAME).eq("kind", "extra").eq("archive", false).is("finished_at", null).limit(1).maybeSingle();
     if (open) play = open as Play;
     else {
       const seed = Math.floor(Math.random() * 2 ** 32);

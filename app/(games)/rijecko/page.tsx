@@ -4,8 +4,8 @@ import { startRijecko } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function RijeckoPage({ searchParams }: { searchParams: { extra?: string } }) {
-  const res = await startRijecko(searchParams.extra === "1");
+export default async function RijeckoPage({ searchParams }: { searchParams: { extra?: string; arhiva?: string } }) {
+  const res = await startRijecko(searchParams.extra === "1", searchParams.arhiva);
   if (res.status === "unauthenticated") return <p>Učitavam… osvježi stranicu za koji trenutak.</p>;
   if (res.status === "paywall") return <Paywall />;
   if (res.status === "exhausted") return <p>Trenutno nema novih mreža. Navrati uskoro!</p>;

@@ -4,8 +4,8 @@ import { startDubina } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function DubinaPage({ searchParams }: { searchParams: { extra?: string } }) {
-  const res = await startDubina(searchParams.extra === "1");
+export default async function DubinaPage({ searchParams }: { searchParams: { extra?: string; arhiva?: string } }) {
+  const res = await startDubina(searchParams.extra === "1", searchParams.arhiva);
   if (res.status === "unauthenticated") return <p>Učitavam… osvježi stranicu za koji trenutak.</p>;
   if (res.status === "paywall") return <Paywall />;
   if (res.status === "exhausted") return <p>Trenutno nema novih kategorija. Navrati uskoro!</p>;

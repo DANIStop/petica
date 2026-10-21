@@ -23,6 +23,7 @@ export default async function PremiumPage({ searchParams }: { searchParams: { us
       </ul>
       {premium ? (
         <div className="space-y-3 rounded-xl bg-card p-4">
+          <p className="flex gap-4"><a href="/arhiva" className="underline">Arhiva</a><a href="/statistika" className="underline">Statistika</a></p>
           <p>Premium je aktivan do {new Date(profile!.premium_until).toLocaleDateString("hr-HR")}. 🎉</p>
           <form action={openPortal}><button className="rounded-lg bg-white/10 px-4 py-2">Upravljaj pretplatom</button></form>
         </div>

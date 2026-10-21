@@ -62,7 +62,11 @@ export default async function Home() {
         })}
       </ul>
       {offerSave && <SaveStreakPrompt />}
-      <a href="/premium" className="mt-6 block text-center text-muted">Petica Premium ⭐</a>
+      <nav className="mt-6 flex justify-center gap-4 text-muted">
+        <a href="/arhiva">Arhiva</a>
+        <a href="/statistika">Statistika</a>
+        <a href="/premium">Premium ⭐</a>
+      </nav>
     </>
   );
 }

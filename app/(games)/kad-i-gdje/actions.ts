@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
 import { updateStreak } from "@/lib/server/streak";
-import { findPlay, startExtraPlay, type Play } from "@/lib/server/plays";
+import { findPlay, startArchivePlay, startExtraPlay, type Play } from "@/lib/server/plays";
 import type { Photo } from "@/lib/games/kad-i-gdje/commons";
 import { isValidGuesses, scoreRound, type KigAnswer, type KigGuess, type PhotoResult } from "@/lib/games/kad-i-gdje/scoring";
 
@@ -36,7 +36,7 @@ function toReveal(guesses: KigGuess[], results: PhotoResult[], total: number, ph
 // source_url vodi na stranicu s naslovom datoteke (može odati mjesto), pa se klijentu šalje tek u reveal-u
 const hideSource = (photos: Photo[]) => photos.map((p) => ({ ...p, source_url: "" }));
 
-export async function startKadIGdje(extra = false): Promise<StartResult> {
+export async function startKadIGdje(extra = false, archiveDate?: string): Promise<StartResult> {
   const date = todayZagreb();
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { status: "unauthenticated", date };
@@ -44,7 +44,11 @@ export async function startKadIGdje(extra = false): Promise<StartResult> {
   const db = createAdminClient();
   let play: Play | null;
 
-  if (extra) {
+  if (archiveDate) {
+    const res = await startArchivePlay(db, auth.user.id, GAME, archiveDate, date, () => ({}));
+    if (res.status !== "ok") return { status: res.status === "invalid" ? "empty" : res.status, date };
+    play = res.play;
+  } else if (extra) {
     const res = await startExtraPlay(db, auth.user.id, GAME, date, () => ({}));
     if (res.status !== "ok") return { status: res.status, date };
     play = res.play;
@@ -61,9 +65,9 @@ export async function startKadIGdje(extra = false): Promise<StartResult> {
   const { photos, answers } = await loadContent(play!.content_id);
   if (play!.finished_at) {
     const { guesses, results } = play!.state as { guesses: KigGuess[]; results: PhotoResult[] };
-    return { status: "done", date, photos, playId: play!.id, extra: false, reveal: toReveal(guesses, results, play!.score!, photos, answers) };
+    return { status: "done", date: play!.date, photos, playId: play!.id, extra: play!.kind === "extra", reveal: toReveal(guesses, results, play!.score!, photos, answers) };
   }
-  return { status: "play", date, photos: hideSource(photos), playId: play!.id, extra };
+  return { status: "play", date: play!.date, photos: hideSource(photos), playId: play!.id, extra };
 }
 
 export async function submitKadIGdje(guesses: unknown, playId?: string): Promise<{ error: string } | { reveal: Reveal }> {

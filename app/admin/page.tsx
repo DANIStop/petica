@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GAMES } from "@/lib/games/registry";
 import { addDays, todayZagreb } from "@/lib/date";
-import { fillSchedule, setStatus } from "./actions";
+import { EditForm, ImportForm } from "@/components/AdminForms";
+import { isImportable } from "@/lib/admin/content";
+import { fillScheduleAction, setStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 const MIN_DAYS = 30;
@@ -40,9 +42,10 @@ export default async function Admin() {
             <p className="rounded-lg bg-red-500/20 p-2 text-red-300">⚠ Zakazano samo {scheduled} dana (cilj ≥ {MIN_DAYS}).</p>
           )}
           <p className="text-muted">Zakazano u idućih 60 dana: {scheduled}</p>
-          <form action={fillSchedule.bind(null, g.slug)}>
+          <form action={fillScheduleAction.bind(null, g.slug)}>
             <button className="rounded-lg bg-white/10 px-3 py-2">Popuni kalendar odobrenima</button>
           </form>
+          {isImportable(g.slug) && <ImportForm game={g.slug} />}
           <h3 className="font-medium">Na čekanju ({pending.length})</h3>
           {pending.map((c) => (
             <div key={c.id} className="rounded-xl bg-card p-3 text-sm">
@@ -72,6 +75,9 @@ export default async function Admin() {
                     <li key={i}>{q.question} <span className="text-muted">({q.unit})</span></li>
                   ))}
                 </ol>
+              )}
+              {isImportable(g.slug) && (
+                <EditForm id={c.id} initial={JSON.stringify({ payload: c.payload, answer: (c.content_answers as unknown as { answer: unknown } | null)?.answer }, null, 2)} />
               )}
               <div className="mt-2 flex gap-2">
                 <form action={setStatus.bind(null, c.id, "approved")}><button className="rounded bg-green-600 px-3 py-1">Odobri</button></form>

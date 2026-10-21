@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
 import { updateStreak } from "@/lib/server/streak";
-import { findPlay, startExtraPlay, type Play } from "@/lib/server/plays";
+import { findPlay, startArchivePlay, startExtraPlay, type Play } from "@/lib/server/plays";
 import { applySwap, checkSwap, computeColors, isSolved, MAX_SWAPS, type Color, type Grid } from "@/lib/games/rijecko/puzzle";
 
 const GAME = "rijecko";
@@ -48,7 +48,7 @@ function toView(play: Play, state: PlayState, solution: Grid, finished: boolean)
 
 const initState = (payload: { grid: Grid }): PlayState => ({ grid: payload.grid, swapsLeft: MAX_SWAPS, moves: 0 });
 
-export async function startRijecko(extra = false): Promise<StartResult> {
+export async function startRijecko(extra = false, archiveDate?: string): Promise<StartResult> {
   const date = todayZagreb();
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { status: "unauthenticated", date };
@@ -56,7 +56,11 @@ export async function startRijecko(extra = false): Promise<StartResult> {
   const db = createAdminClient();
   let play: Play | null;
 
-  if (extra) {
+  if (archiveDate) {
+    const res = await startArchivePlay(db, auth.user.id, GAME, archiveDate, date, initState);
+    if (res.status !== "ok") return { status: res.status === "invalid" ? "empty" : res.status, date };
+    play = res.play;
+  } else if (extra) {
     const res = await startExtraPlay(db, auth.user.id, GAME, date, initState);
     if (res.status !== "ok") return { status: res.status, date };
     play = res.play;

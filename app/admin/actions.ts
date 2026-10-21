@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { addDays, todayZagreb } from "@/lib/date";
-
-const SCHEDULE_DAYS = 60;
+import { todayZagreb } from "@/lib/date";
+import { fillSchedule } from "@/lib/server/schedule";
+import { isImportable, parseImport, validateContent, type Existing } from "@/lib/admin/content";
+import { normalizeQuestion } from "@/lib/games/najblize/generator";
+import { normalizeAnswer } from "@/lib/games/dubina/scoring";
 
 async function requireAdmin() {
   const supabase = createClient();
@@ -23,25 +25,58 @@ export async function setStatus(id: string, status: "approved" | "rejected") {
 }
 
 /** Popunjava prazne dane u idućih 60 odobrenim sadržajem koji još nije zakazan. */
-export async function fillSchedule(game: string) {
+export async function fillScheduleAction(game: string) {
   const db = await requireAdmin();
-  const today = todayZagreb();
-  const end = addDays(today, SCHEDULE_DAYS - 1);
-
-  const [{ data: sched }, { data: approved }, { data: used }] = await Promise.all([
-    db.from("daily_schedule").select("date").eq("game", game).gte("date", today).lte("date", end),
-    db.from("content").select("id").eq("game", game).eq("status", "approved").order("created_at"),
-    db.from("daily_schedule").select("content_id").eq("game", game),
-  ]);
-  const taken = new Set(sched?.map((s) => s.date));
-  const usedIds = new Set(used?.map((u) => u.content_id));
-  const free = (approved ?? []).filter((c) => !usedIds.has(c.id));
-
-  const rows = [];
-  for (let i = 0; i < SCHEDULE_DAYS && free.length; i++) {
-    const date = addDays(today, i);
-    if (!taken.has(date)) rows.push({ date, game, content_id: free.shift()!.id });
-  }
-  if (rows.length) await db.from("daily_schedule").insert(rows);
+  await fillSchedule(db, game, todayZagreb());
   revalidatePath("/admin");
+}
+
+export type ActionResult = { ok: boolean; message: string };
+
+async function existingFor(db: Awaited<ReturnType<typeof requireAdmin>>, game: string): Promise<Existing> {
+  const { data } = await db.from("content").select("payload").eq("game", game);
+  const payloads = (data ?? []).map((r) => r.payload as Record<string, unknown>);
+  return {
+    questions: new Set(payloads.flatMap((p) => ((p.questions as { question: string }[]) ?? []).map((q) => normalizeQuestion(q.question)))),
+    categories: new Set(payloads.filter((p) => typeof p.category === "string").map((p) => normalizeAnswer(p.category as string))),
+    photoSources: new Set(payloads.flatMap((p) => ((p.photos as { source_url: string }[]) ?? []).map((x) => x.source_url))),
+  };
+}
+
+/** Bulk import: JSON polje po igri → nove 'pending' runde (nikad izravno approved). */
+export async function importContent(game: string, text: string): Promise<ActionResult> {
+  const db = await requireAdmin();
+  if (!isImportable(game)) return { ok: false, message: "Uvoz nije podržan za ovu igru." };
+  let input: unknown;
+  try { input = JSON.parse(text); } catch { return { ok: false, message: "Neispravan JSON." }; }
+
+  const { rounds, errors } = parseImport(game, input, await existingFor(db, game));
+  for (const r of rounds) {
+    const { data, error } = await db
+      .from("content")
+      .insert({ game, payload: r.payload, source_url: r.source_url, difficulty: r.difficulty, status: "pending" })
+      .select("id").single();
+    if (error) return { ok: false, message: `Greška baze: ${error.message}` };
+    await db.from("content_answers").insert({ content_id: data.id, answer: r.answer });
+  }
+  revalidatePath("/admin");
+  return { ok: rounds.length > 0, message: [`Uvezeno rundi: ${rounds.length}.`, ...errors].join(" ") };
+}
+
+/** Ručno uređivanje pending/rejected sadržaja kao JSON {payload, answer}. */
+export async function updateContent(id: string, text: string): Promise<ActionResult> {
+  const db = await requireAdmin();
+  let input: { payload?: unknown; answer?: unknown };
+  try { input = JSON.parse(text); } catch { return { ok: false, message: "Neispravan JSON." }; }
+
+  const { data: row } = await db.from("content").select("game,status").eq("id", id).single();
+  if (!row) return { ok: false, message: "Sadržaj ne postoji." };
+  if (row.status === "approved") return { ok: false, message: "Odobreni sadržaj se ne uređuje (može biti već zakazan)." };
+  const problem = validateContent(row.game, input.payload, input.answer);
+  if (problem) return { ok: false, message: problem };
+
+  await db.from("content").update({ payload: input.payload }).eq("id", id);
+  await db.from("content_answers").update({ answer: input.answer }).eq("content_id", id);
+  revalidatePath("/admin");
+  return { ok: true, message: "Spremljeno." };
 }

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
 import { updateStreak } from "@/lib/server/streak";
-import { findPlay, startExtraPlay, type Play } from "@/lib/server/plays";
+import { findPlay, startArchivePlay, startExtraPlay, type Play } from "@/lib/server/plays";
 import { isValidGuesses, scoreRound, type NajblizeAnswer, type NajblizeQuestion } from "@/lib/games/najblize/scoring";
 
 const GAME = "najblize";
@@ -33,7 +33,7 @@ async function loadContent(contentId: string) {
   };
 }
 
-export async function startNajblize(extra = false): Promise<StartResult> {
+export async function startNajblize(extra = false, archiveDate?: string): Promise<StartResult> {
   const date = todayZagreb();
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { status: "unauthenticated", date };
@@ -41,7 +41,11 @@ export async function startNajblize(extra = false): Promise<StartResult> {
   const db = createAdminClient();
   let play: Play | null;
 
-  if (extra) {
+  if (archiveDate) {
+    const res = await startArchivePlay(db, auth.user.id, GAME, archiveDate, date, () => ({}));
+    if (res.status !== "ok") return { status: res.status === "invalid" ? "empty" : res.status, date };
+    play = res.play;
+  } else if (extra) {
     const res = await startExtraPlay(db, auth.user.id, GAME, date, () => ({}));
     if (res.status !== "ok") return { status: res.status, date };
     play = res.play;
@@ -59,9 +63,9 @@ export async function startNajblize(extra = false): Promise<StartResult> {
   const { questions, answers } = await loadContent(play!.content_id);
   if (play!.finished_at) {
     const { guesses, scores } = play!.state as { guesses: number[]; scores: number[] };
-    return { status: "done", date, questions, playId: play!.id, extra: false, reveal: { guesses, scores, total: play!.score!, answers } };
+    return { status: "done", date: play!.date, questions, playId: play!.id, extra: play!.kind === "extra", reveal: { guesses, scores, total: play!.score!, answers } };
   }
-  return { status: "play", date, questions, playId: play!.id, extra };
+  return { status: "play", date: play!.date, questions, playId: play!.id, extra };
 }
 
 export async function submitNajblize(guesses: unknown, playId?: string): Promise<{ error: string } | { reveal: Reveal }> {
