@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
-import { recordPlay, EMPTY_STREAK } from "@/lib/streak";
+import { updateStreak } from "@/lib/server/streak";
 import { isValidGuesses, scoreRound, type NajblizeAnswer, type NajblizeQuestion } from "@/lib/games/najblize/scoring";
 
 const GAME = "najblize";
@@ -80,9 +80,7 @@ export async function submitNajblize(guesses: unknown): Promise<{ error: string 
     .eq("id", play.id).is("finished_at", null).select("id");
   if (!updated?.length) return { error: "Današnju rundu već si odigrao/la." };
 
-  const { data: row } = await db.from("streaks").select("current,best,last_date").eq("user_id", auth.user.id).eq("game", GAME).maybeSingle();
-  const next = recordPlay(row ?? EMPTY_STREAK, date);
-  await db.from("streaks").upsert({ user_id: auth.user.id, game: GAME, ...next });
+  await updateStreak(db, auth.user.id, GAME, date);
 
   return { reveal: { guesses, scores, total, answers } };
 }

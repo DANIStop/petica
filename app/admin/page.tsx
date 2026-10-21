@@ -22,7 +22,7 @@ export default async function Admin() {
   const sections = await Promise.all(
     games.map(async (g) => {
       const [{ data: pending }, { data: sched }] = await Promise.all([
-        db.from("content").select("id,payload,source_url,difficulty").eq("game", g.slug).eq("status", "pending").order("created_at").limit(50),
+        db.from("content").select("id,payload,content_answers(answer)").eq("game", g.slug).eq("status", "pending").order("created_at").limit(50),
         db.from("daily_schedule").select("date").eq("game", g.slug).gte("date", today).lte("date", addDays(today, 59)),
       ]);
       return { g, pending: pending ?? [], scheduled: sched?.length ?? 0 };
@@ -45,11 +45,15 @@ export default async function Admin() {
           <h3 className="font-medium">Na čekanju ({pending.length})</h3>
           {pending.map((c) => (
             <div key={c.id} className="rounded-xl bg-card p-3 text-sm">
-              <ol className="list-decimal pl-5">
-                {(c.payload.questions as { question: string; unit: string }[]).map((q, i) => (
-                  <li key={i}>{q.question} <span className="text-muted">({q.unit})</span></li>
-                ))}
-              </ol>
+              {g.slug === "rijecko" ? (
+                <p>{((c.content_answers as unknown as { answer: { words: string[] } } | null)?.answer.words ?? []).join(" · ")}</p>
+              ) : (
+                <ol className="list-decimal pl-5">
+                  {(c.payload.questions as { question: string; unit: string }[]).map((q, i) => (
+                    <li key={i}>{q.question} <span className="text-muted">({q.unit})</span></li>
+                  ))}
+                </ol>
+              )}
               <div className="mt-2 flex gap-2">
                 <form action={setStatus.bind(null, c.id, "approved")}><button className="rounded bg-green-600 px-3 py-1">Odobri</button></form>
                 <form action={setStatus.bind(null, c.id, "rejected")}><button className="rounded bg-red-600 px-3 py-1">Odbij</button></form>

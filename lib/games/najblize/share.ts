@@ -1,11 +1,8 @@
 import { MAX_SCORE } from "./scoring";
 
-export const LAUNCH_DATE = "2026-10-21";
+import { roundNumber } from "@/lib/date";
 
-export function roundNumber(date: string): number {
-  const days = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${LAUNCH_DATE}T00:00:00Z`)) / 86_400_000;
-  return Math.max(1, Math.round(days) + 1);
-}
+export { roundNumber };
 
 function emoji(score: number): string {
   return score >= 90 ? "🟩" : score >= 60 ? "🟨" : "🟥";
