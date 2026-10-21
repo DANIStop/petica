@@ -47,6 +47,14 @@ export default async function Admin() {
             <div key={c.id} className="rounded-xl bg-card p-3 text-sm">
               {g.slug === "rijecko" ? (
                 <p>{((c.content_answers as unknown as { answer: { words: string[] } } | null)?.answer.words ?? []).join(" · ")}</p>
+              ) : g.slug === "dubina" ? (
+                <div>
+                  <p className="font-medium">{c.payload.category as string}</p>
+                  <p className="text-muted">
+                    {((c.content_answers as unknown as { answer: { entries: { text: string; count: number }[] } } | null)?.answer.entries ?? [])
+                      .map((e) => `${e.text} (${e.count})`).join(", ")}
+                  </p>
+                </div>
               ) : (
                 <ol className="list-decimal pl-5">
                   {(c.payload.questions as { question: string; unit: string }[]).map((q, i) => (
