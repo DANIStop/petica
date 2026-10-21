@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { GAMES } from "@/lib/games/registry";
 import { todayZagreb } from "@/lib/date";
+import SaveStreakPrompt from "@/components/SaveStreakPrompt";
 import { activeStreak, EMPTY_STREAK, type Streak } from "@/lib/streak";
 
 export const dynamic = "force-dynamic";
@@ -8,11 +9,12 @@ export const dynamic = "force-dynamic";
 async function loadStatus(today: string) {
   const played = new Set<string>();
   const streaks = new Map<string, Streak>();
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { played, streaks };
+  const none = { played, streaks, offerSave: false };
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return none;
 
   const supabase = createClient();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { played, streaks };
+  if (!auth.user) return none;
 
   const [plays, st] = await Promise.all([
     supabase.from("plays").select("game").eq("date", today).eq("kind", "daily").not("finished_at", "is", null),
@@ -20,12 +22,13 @@ async function loadStatus(today: string) {
   ]);
   plays.data?.forEach((p) => played.add(p.game));
   st.data?.forEach((s) => streaks.set(s.game, s));
-  return { played, streaks };
+  // prompt tek nakon prve odigrane igre i samo anonimnim korisnicima
+  return { played, streaks, offerSave: !!auth.user.is_anonymous && (st.data?.length ?? 0) > 0 };
 }
 
 export default async function Home() {
   const today = todayZagreb();
-  const { played, streaks } = await loadStatus(today);
+  const { played, streaks, offerSave } = await loadStatus(today);
 
   return (
     <>
@@ -58,6 +61,7 @@ export default async function Home() {
           );
         })}
       </ul>
+      {offerSave && <SaveStreakPrompt />}
       <a href="/premium" className="mt-6 block text-center text-muted">Petica Premium ⭐</a>
     </>
   );

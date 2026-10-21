@@ -34,7 +34,7 @@ export default function NajblizeGame(props: Props) {
 
   async function copy() {
     if (!reveal) return;
-    await navigator.clipboard.writeText(shareText(props.date, reveal.scores));
+    await navigator.clipboard.writeText(`${shareText(props.date, reveal.scores)}\n${location.origin}/r/najblize/${props.date}`);
     setCopied(true);
   }
 

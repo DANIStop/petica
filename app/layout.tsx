@@ -4,6 +4,7 @@ import RegisterSW from "@/components/RegisterSW";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Petica.",
   description: "Pet dnevnih igara na hrvatskom.",
   manifest: "/manifest.webmanifest",

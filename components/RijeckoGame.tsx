@@ -30,7 +30,7 @@ export default function RijeckoGame({ initial }: { initial: RijeckoView }) {
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(shareText(view.date, view.solved, view.swapsLeft, view.colors));
+    await navigator.clipboard.writeText(`${shareText(view.date, view.solved, view.swapsLeft, view.colors)}\n${location.origin}/r/rijecko/${view.date}`);
     setCopied(true);
   }
 
