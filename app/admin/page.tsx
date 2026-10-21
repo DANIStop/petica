@@ -47,6 +47,16 @@ export default async function Admin() {
             <div key={c.id} className="rounded-xl bg-card p-3 text-sm">
               {g.slug === "rijecko" ? (
                 <p>{((c.content_answers as unknown as { answer: { words: string[] } } | null)?.answer.words ?? []).join(" · ")}</p>
+              ) : g.slug === "kad-i-gdje" ? (
+                <div className="grid grid-cols-5 gap-1">
+                  {(c.payload.photos as { url: string; license: string }[]).map((p, i) => (
+                    <div key={i}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt="" className="aspect-square w-full rounded object-cover" />
+                      <span className="text-xs text-muted">{p.license}</span>
+                    </div>
+                  ))}
+                </div>
               ) : g.slug === "dubina" ? (
                 <div>
                   <p className="font-medium">{c.payload.category as string}</p>

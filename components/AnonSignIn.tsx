@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function AnonSignIn() {
   const router = useRouter();
   useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return; // lokalni razvoj bez Supabasea
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) return;
