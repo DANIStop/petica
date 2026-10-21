@@ -65,6 +65,30 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
   font-variation-settings: "opsz" 144;
 }
 
+/* ploče i redovi unutar ekrana igre */
+.panel {
+  border-radius: 1.1rem;
+  border: 1px solid var(--rule);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent, #fff) 8%, transparent), transparent 55%),
+    var(--card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.row {
+  border-radius: 0.8rem;
+  border: 1px solid var(--rule);
+  background: var(--card);
+}
+.btn-accent {
+  background: var(--accent);
+  color: #0b0c10;
+  font-weight: 700;
+  box-shadow: 0 10px 24px -12px var(--accent);
+  transition: transform 0.15s, filter 0.2s;
+}
+.btn-accent:hover { filter: brightness(1.08); }
+.btn-accent:active { transform: scale(0.98); }
+
 /* kartica igre */
 .game-card {
   --accent: #fff;
@@ -140,3 +164,9 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
   .rise { animation: none; }
   .game-card { transition: none; }
 }
+
+/* tamna tema karte: invertirane OSM pločice, kontrole ostaju čitljive */
+.leaflet-container { background: #14161d; font-family: var(--font-body); }
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7); }
+.leaflet-control-attribution { background: rgba(11, 12, 16, 0.7) !important; color: var(--muted) !important; }
+.leaflet-control-attribution a { color: var(--ink) !important; }

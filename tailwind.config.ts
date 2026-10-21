@@ -9,6 +9,7 @@ const config: Config = {
         card: "var(--card)",
         muted: "var(--muted)",
         ink: "var(--ink)",
+        accent: "var(--accent)",
       },
       fontFamily: {
         display: ["var(--font-display)"],

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { submitDubina, type Reveal, type StartResult } from "@/app/(games)/dubina/actions";
 import { GUESSES_PER_ROUND, MAX_SCORE } from "@/lib/games/dubina/scoring";
 import { shareText } from "@/lib/games/dubina/share";
+import GameHeader, { accentVars } from "@/components/GameHeader";
 import ExtraRoundLink from "@/components/ExtraRoundLink";
 
 type Props = Extract<StartResult, { status: "play" | "done" }>;
@@ -34,9 +35,9 @@ export default function DubinaGame(props: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-sky-400">Dubina{props.extra && " ⭐"}</h1>
-      <div className="rounded-xl bg-card p-4">
+    <div className="space-y-4" style={accentVars("dubina")}>
+      <GameHeader slug="dubina" extra={props.extra} />
+      <div className="panel p-4">
         <p className="text-lg font-semibold">{props.category}</p>
         {!reveal && <p className="mt-1 text-sm text-muted">Upiši do {GUESSES_PER_ROUND} različitih odgovora. Što rjeđi odgovor, to više bodova.</p>}
       </div>
@@ -45,15 +46,15 @@ export default function DubinaGame(props: Props) {
         <>
           <ul className="space-y-2">
             {reveal.results.map((r, i) => (
-              <li key={i} className="flex justify-between rounded-lg bg-card px-3 py-2">
+              <li key={i} className="flex justify-between row px-3 py-2">
                 <span>{r.guess.trim() || "—"}</span>
-                <span className={r.points ? "text-sky-400" : "text-muted"}>
+                <span className={r.points ? "text-accent" : "text-muted"}>
                   {r.points ? `${r.points} bod.` : r.entry >= 0 ? "već upisano" : r.guess.trim() ? "nije na popisu" : ""}
                 </span>
               </li>
             ))}
           </ul>
-          <div className="rounded-xl bg-card p-4">
+          <div className="panel p-4">
             <p className="mb-2 text-sm text-muted">Što su drugi odgovarali:</p>
             <ol className="space-y-1 text-sm">
               {reveal.answers.slice(0, 15).map((a) => (
@@ -61,9 +62,9 @@ export default function DubinaGame(props: Props) {
               ))}
             </ol>
           </div>
-          <div className="rounded-xl bg-card p-4 text-center">
+          <div className="panel p-4 text-center">
             <p className="text-3xl font-bold">{reveal.total}/{MAX_SCORE}</p>
-            <button onClick={copy} className="mt-3 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-black">
+            <button onClick={copy} className="btn-accent mt-3 rounded-lg px-4 py-2">
               {copied ? "Kopirano ✓" : "Podijeli"}
             </button>
             <ExtraRoundLink game="dubina" />
@@ -79,16 +80,15 @@ export default function DubinaGame(props: Props) {
               maxLength={40}
               onChange={(e) => setValues(values.map((x, j) => (j === i ? e.target.value : x)))}
               placeholder={`Odgovor ${i + 1}`}
-              className="w-full rounded-lg bg-card px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-sky-400"
+              className="w-full row px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-accent"
             />
           ))}
           {error && <p className="text-red-400">{error}</p>}
-          <button disabled={pending} className="w-full rounded-xl bg-sky-500 py-3 font-semibold text-black disabled:opacity-50">
+          <button disabled={pending} className="w-full rounded-xl btn-accent py-3 font-semibold text-black disabled:opacity-50">
             {pending ? "Provjeravam…" : "Predaj"}
           </button>
         </form>
       )}
-      <a href="/" className="block text-center text-muted">← Natrag</a>
     </div>
   );
 }

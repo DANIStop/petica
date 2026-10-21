@@ -5,10 +5,11 @@ import { useState, useTransition } from "react";
 import { submitKadIGdje, type Reveal, type StartResult } from "@/app/(games)/kad-i-gdje/actions";
 import { MAX_SCORE } from "@/lib/games/kad-i-gdje/scoring";
 import { shareText } from "@/lib/games/kad-i-gdje/share";
+import GameHeader, { accentVars } from "@/components/GameHeader";
 import ExtraRoundLink from "@/components/ExtraRoundLink";
 
 // Leaflet traži `window`, pa se karta učitava samo u pregledniku
-const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false, loading: () => <div className="h-64 rounded-xl bg-card" /> });
+const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false, loading: () => <div className="h-64 panel" /> });
 
 type Props = Extract<StartResult, { status: "play" | "done" }>;
 type Draft = { lat: number; lng: number } | null;
@@ -52,35 +53,34 @@ export default function KadIGdjeGame(props: Props) {
 
   if (reveal) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-pink-400">Kad i gdje{props.extra && " ⭐"}</h1>
+      <div className="space-y-4" style={accentVars("kad-i-gdje")}>
+        <GameHeader slug="kad-i-gdje" extra={props.extra} />
         {reveal.items.map((it, i) => (
-          <div key={i} className="rounded-xl bg-card p-3">
+          <div key={i} className="panel p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={props.photos[i].url} alt="" className="mb-2 max-h-48 w-full rounded-lg object-cover" />
             <MapPicker value={{ lat: it.guess.lat, lng: it.guess.lng }} answer={it.answer} />
             <p className="mt-2 text-sm">
               {it.result.km} km daleko · godina {it.answer.year} (tvoja {it.guess.year}) ·{" "}
-              <b className="text-pink-400">{it.result.points} bod.</b>
+              <b className="text-accent">{it.result.points} bod.</b>
             </p>
             {credit(i)}
             <a href={it.source_url} target="_blank" rel="noreferrer" className="text-xs text-muted underline">Wikimedia Commons</a>
           </div>
         ))}
-        <div className="rounded-xl bg-card p-4 text-center">
+        <div className="panel p-4 text-center">
           <p className="text-3xl font-bold">{reveal.total}/{MAX_SCORE}</p>
-          <button onClick={copy} className="mt-3 rounded-lg bg-pink-500 px-4 py-2 font-semibold text-black">{copied ? "Kopirano ✓" : "Podijeli"}</button>
+          <button onClick={copy} className="btn-accent mt-3 rounded-lg px-4 py-2">{copied ? "Kopirano ✓" : "Podijeli"}</button>
           <ExtraRoundLink game="kad-i-gdje" />
           <p className="mt-3 text-sm text-muted">Nova dnevna runda sutra u ponoć.</p>
         </div>
-        <a href="/" className="block text-center text-muted">← Natrag</a>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-pink-400">Kad i gdje{props.extra && " ⭐"}</h1>
+    <div className="space-y-4" style={accentVars("kad-i-gdje")}>
+      <GameHeader slug="kad-i-gdje" extra={props.extra} />
       <p className="text-muted">Fotografija {step + 1}/{n}</p>
       <div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,13 +91,12 @@ export default function KadIGdjeGame(props: Props) {
       <input
         inputMode="numeric" value={years[step]} placeholder="Godina, npr. 1965"
         onChange={(e) => setYears(years.map((y, i) => (i === step ? e.target.value.replace(/\D/g, "").slice(0, 4) : y)))}
-        className="w-full rounded-lg bg-card px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-pink-400"
+        className="w-full row px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-accent"
       />
       {error && <p className="text-red-400">{error}</p>}
-      <button onClick={next} disabled={pending} className="w-full rounded-xl bg-pink-500 py-3 font-semibold text-black disabled:opacity-50">
+      <button onClick={next} disabled={pending} className="w-full rounded-xl btn-accent py-3 font-semibold text-black disabled:opacity-50">
         {pending ? "Provjeravam…" : step < n - 1 ? "Dalje" : "Predaj"}
       </button>
-      <a href="/" className="block text-center text-muted">← Natrag</a>
     </div>
   );
 }
