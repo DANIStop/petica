@@ -58,6 +58,7 @@ export default async function Home() {
           );
         })}
       </ul>
+      <a href="/premium" className="mt-6 block text-center text-muted">Petica Premium ⭐</a>
     </>
   );
 }

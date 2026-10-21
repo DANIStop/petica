@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayZagreb } from "@/lib/date";
 import { updateStreak } from "@/lib/server/streak";
+import { findPlay, startExtraPlay, type Play } from "@/lib/server/plays";
 import { isValidGuesses, scoreRound, type NajblizeAnswer, type NajblizeQuestion } from "@/lib/games/najblize/scoring";
 
 const GAME = "najblize";
@@ -16,9 +17,9 @@ export type Reveal = {
 };
 
 export type StartResult =
-  | { status: "play"; date: string; questions: NajblizeQuestion[] }
-  | { status: "done"; date: string; questions: NajblizeQuestion[]; reveal: Reveal }
-  | { status: "empty" | "unauthenticated"; date: string };
+  | { status: "play"; date: string; questions: NajblizeQuestion[]; playId: string; extra: boolean }
+  | { status: "done"; date: string; questions: NajblizeQuestion[]; reveal: Reveal; playId: string; extra: boolean }
+  | { status: "empty" | "unauthenticated" | "paywall" | "exhausted"; date: string };
 
 async function loadContent(contentId: string) {
   const db = createAdminClient();
@@ -32,43 +33,47 @@ async function loadContent(contentId: string) {
   };
 }
 
-export async function startNajblize(): Promise<StartResult> {
+export async function startNajblize(extra = false): Promise<StartResult> {
   const date = todayZagreb();
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { status: "unauthenticated", date };
 
   const db = createAdminClient();
-  const { data: existing } = await db
-    .from("plays").select("*").eq("user_id", auth.user.id).eq("game", GAME).eq("date", date).eq("kind", "daily").maybeSingle();
+  let play: Play | null;
 
-  let contentId = existing?.content_id as string | undefined;
-  if (!contentId) {
-    const { data: sched } = await db.from("daily_schedule").select("content_id").eq("date", date).eq("game", GAME).maybeSingle();
-    if (!sched) return { status: "empty", date };
-    contentId = sched.content_id;
-    // unique indeks na (user, game, date) za daily štiti od dvostrukog starta
-    await db.from("plays").insert({ user_id: auth.user.id, game: GAME, date, content_id: contentId, kind: "daily" });
+  if (extra) {
+    const res = await startExtraPlay(db, auth.user.id, GAME, date, () => ({}));
+    if (res.status !== "ok") return { status: res.status, date };
+    play = res.play;
+  } else {
+    play = await findPlay(db, auth.user.id, GAME, date);
+    if (!play) {
+      const { data: sched } = await db.from("daily_schedule").select("content_id").eq("date", date).eq("game", GAME).maybeSingle();
+      if (!sched) return { status: "empty", date };
+      // unique indeks na (user, game, date) za daily štiti od dvostrukog starta
+      await db.from("plays").insert({ user_id: auth.user.id, game: GAME, date, content_id: sched.content_id, kind: "daily" });
+      play = await findPlay(db, auth.user.id, GAME, date);
+    }
   }
 
-  const { questions, answers } = await loadContent(contentId!);
-  if (existing?.finished_at) {
-    const { guesses, scores } = existing.state as { guesses: number[]; scores: number[] };
-    return { status: "done", date, questions, reveal: { guesses, scores, total: existing.score, answers } };
+  const { questions, answers } = await loadContent(play!.content_id);
+  if (play!.finished_at) {
+    const { guesses, scores } = play!.state as { guesses: number[]; scores: number[] };
+    return { status: "done", date, questions, playId: play!.id, extra: false, reveal: { guesses, scores, total: play!.score!, answers } };
   }
-  return { status: "play", date, questions };
+  return { status: "play", date, questions, playId: play!.id, extra };
 }
 
-export async function submitNajblize(guesses: unknown): Promise<{ error: string } | { reveal: Reveal }> {
+export async function submitNajblize(guesses: unknown, playId?: string): Promise<{ error: string } | { reveal: Reveal }> {
   if (!isValidGuesses(guesses)) return { error: "Unesi broj za svako pitanje." };
   const { data: auth } = await createClient().auth.getUser();
   if (!auth.user) return { error: "Prijava nije uspjela. Osvježi stranicu." };
 
   const date = todayZagreb();
   const db = createAdminClient();
-  const { data: play } = await db
-    .from("plays").select("*").eq("user_id", auth.user.id).eq("game", GAME).eq("date", date).eq("kind", "daily").maybeSingle();
+  const play = await findPlay(db, auth.user.id, GAME, date, playId);
   if (!play) return { error: "Runda nije započeta." };
-  if (play.finished_at) return { error: "Današnju rundu već si odigrao/la." };
+  if (play.finished_at) return { error: "Ovu rundu si već odigrao/la." };
 
   const { answers } = await loadContent(play.content_id);
   const { scores, total } = scoreRound(guesses, answers.map((a) => a.value));
@@ -78,9 +83,8 @@ export async function submitNajblize(guesses: unknown): Promise<{ error: string 
     .from("plays")
     .update({ state: { guesses, scores }, score: total, finished_at: new Date().toISOString() })
     .eq("id", play.id).is("finished_at", null).select("id");
-  if (!updated?.length) return { error: "Današnju rundu već si odigrao/la." };
+  if (!updated?.length) return { error: "Ovu rundu si već odigrao/la." };
 
-  await updateStreak(db, auth.user.id, GAME, date);
-
+  if (play.kind === "daily") await updateStreak(db, auth.user.id, GAME, play.date);
   return { reveal: { guesses, scores, total, answers } };
 }

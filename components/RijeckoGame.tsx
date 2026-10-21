@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { swapRijecko, type RijeckoView } from "@/app/(games)/rijecko/actions";
 import { MAX_SWAPS, SIZE, isHole } from "@/lib/games/rijecko/puzzle";
 import { shareText } from "@/lib/games/rijecko/share";
+import ExtraRoundLink from "@/components/ExtraRoundLink";
 
 const BG = { green: "bg-green-600", yellow: "bg-yellow-500 text-black", gray: "bg-zinc-600" } as const;
 
@@ -22,7 +23,7 @@ export default function RijeckoGame({ initial }: { initial: RijeckoView }) {
     setSelected(null);
     setError("");
     start(async () => {
-      const res = await swapRijecko(a, i);
+      const res = await swapRijecko(a, i, view.playId);
       if ("error" in res) setError(res.error);
       else setView(res.view);
     });
@@ -37,7 +38,7 @@ export default function RijeckoGame({ initial }: { initial: RijeckoView }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-green-400">Riječko</h1>
+      <h1 className="text-2xl font-bold text-green-400">Riječko{view.extra && " ⭐"}</h1>
       <p className="text-muted">
         Zamjene: <b className="text-white">{view.swapsLeft}</b>/{MAX_SWAPS}
       </p>
@@ -66,7 +67,8 @@ export default function RijeckoGame({ initial }: { initial: RijeckoView }) {
           <button onClick={copy} className="mt-3 rounded-lg bg-green-600 px-4 py-2 font-semibold">
             {copied ? "Kopirano ✓" : "Podijeli"}
           </button>
-          <p className="mt-3 text-sm text-muted">Nova runda sutra u ponoć.</p>
+          <ExtraRoundLink game="rijecko" />
+          <p className="mt-3 text-sm text-muted">Nova dnevna runda sutra u ponoć.</p>
         </div>
       )}
       <a href="/" className="block text-center text-muted">← Natrag</a>

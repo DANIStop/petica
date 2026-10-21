@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { submitNajblize, type Reveal, type StartResult } from "@/app/(games)/najblize/actions";
 import { MAX_SCORE } from "@/lib/games/najblize/scoring";
 import { shareText } from "@/lib/games/najblize/share";
+import ExtraRoundLink from "@/components/ExtraRoundLink";
 
 type Props = Extract<StartResult, { status: "play" | "done" }>;
 
@@ -25,7 +26,7 @@ export default function NajblizeGame(props: Props) {
     }
     setError("");
     start(async () => {
-      const res = await submitNajblize(guesses);
+      const res = await submitNajblize(guesses, props.playId);
       if ("error" in res) setError(res.error);
       else setReveal(res.reveal);
     });
@@ -39,7 +40,7 @@ export default function NajblizeGame(props: Props) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-amber-400">Najbliže</h1>
+      <h1 className="text-2xl font-bold text-amber-400">Najbliže{props.extra && " ⭐"}</h1>
       <form onSubmit={submit} className="space-y-4">
         {props.questions.map((q, i) => (
           <div key={i} className="rounded-xl bg-card p-4">
@@ -80,7 +81,8 @@ export default function NajblizeGame(props: Props) {
           <button onClick={copy} className="mt-3 rounded-lg bg-amber-500 px-4 py-2 font-semibold text-black">
             {copied ? "Kopirano ✓" : "Podijeli"}
           </button>
-          <p className="mt-3 text-sm text-muted">Nova runda sutra u ponoć.</p>
+          <ExtraRoundLink game="najblize" />
+          <p className="mt-3 text-sm text-muted">Nova dnevna runda sutra u ponoć.</p>
         </div>
       )}
       <a href="/" className="block text-center text-muted">← Natrag</a>
